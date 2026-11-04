@@ -1,0 +1,9 @@
+/* Keep content clear of the iPhone home indicator under the bottom tab bar */
+.bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* AppShell pads the page by the tab bar's height; add the home-indicator area on top of that */
+.app-main {
+  padding-bottom: calc(var(--app-shell-footer-offset, 0rem) + var(--app-shell-padding) + env(safe-area-inset-bottom)) !important;
+}

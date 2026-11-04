@@ -1,0 +1,115 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:5450:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
+
+  traccar:
+    image: traccar/traccar:6.10
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      CONFIG_USE_ENVIRONMENT_VARIABLES: "true"
+      DATABASE_DRIVER: org.postgresql.Driver
+      DATABASE_URL: jdbc:postgresql://db:5432/traccar
+      DATABASE_USER: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      # Push every position to the API as JSON
+      FORWARD_ENABLE: "true"
+      FORWARD_TYPE: json
+      FORWARD_URL: http://api:8000/traccar/positions?token=${TRACCAR_FORWARD_TOKEN}
+    volumes:
+      - traccar-logs:/opt/traccar/logs
+    ports:
+      - "127.0.0.1:8082:8082"   # web UI (SSH tunnel only)
+      - "5055:5055"   # Traccar Client (OsmAnd protocol)
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      TRACCAR_URL: http://traccar:8082
+      OSRM_URL: http://osrm:5000
+      OSRM_FOOT_URL: http://osrm-foot:5000
+    ports:
+      - "127.0.0.1:8100:8000"
+
+  # Road map for the live map (drivers move along roads between GPS fixes). The first start downloads
+  # OSRM_REGIONS and prepares it (a few minutes); until then drivers move in straight lines.
+  osrm-download:
+    image: debian:bookworm-slim
+    environment:
+      OSRM_REGIONS: ${OSRM_REGIONS:-europe/united-kingdom/england/east-sussex,europe/united-kingdom/england/kent,europe/united-kingdom/england/essex,europe/united-kingdom/england/greater-london,europe/united-kingdom/england/west-sussex,europe/united-kingdom/england/surrey}
+    volumes:
+      - osrm-data:/data
+      - ./docker/osrm/download.sh:/download.sh:ro
+    command: ["sh", "/download.sh"]
+
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v6.0.0
+    restart: unless-stopped
+    depends_on:
+      osrm-download:
+        condition: service_completed_successfully
+    volumes:
+      - osrm-data:/data
+      - ./docker/osrm/start.sh:/start.sh:ro
+    entrypoint: ["sh", "/start.sh"]
+
+  # Walking map (meeting points: how far the customer walks), prepared from the same download as `osrm`
+  osrm-foot:
+    image: ghcr.io/project-osrm/osrm-backend:v6.0.0
+    restart: unless-stopped
+    depends_on:
+      osrm-download:
+        condition: service_completed_successfully
+    volumes:
+      - osrm-data:/data
+      - ./docker/osrm/start.sh:/start.sh:ro
+    entrypoint: ["sh", "/start.sh", "foot"]
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:8090:80"   # React app, behind host nginx (HTTPS); /api/* is proxied to the api service
+
+  bot:
+    build: .
+    restart: on-failure
+    depends_on:
+      - api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      TRACCAR_URL: http://traccar:8082
+      # Meeting points: the bot checks the spots drivers send (road and walking maps)
+      OSRM_URL: http://osrm:5000
+      OSRM_FOOT_URL: http://osrm-foot:5000
+    command: ["python", "-m", "app.bot"]
+
+volumes:
+  pgdata:
+  traccar-logs:
+  osrm-data:

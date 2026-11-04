@@ -1,0 +1,24 @@
+# Test copy of the app for Plan 5 (driver messages), next to the live one on the same server. Use it only with its
+# own project name, and without the road maps (the server is short of memory; Plan 5 doesn't need them):
+#   docker compose -p plan5 -f docker-compose.yml -f docker-compose.plan5.yml up -d --build --no-deps db api bot web
+# Own volumes (plan5_*), other ports (localhost only), served at https://test.dispatchflow.site (host nginx), and the test
+# Telegram bot: plan5's .env is a separate file with the test bot's token. Never put the live bot's token there:
+# Telegram allows one reader per bot, so the live bot would stop getting messages.
+services:
+  db:
+    ports: !override
+      - "127.0.0.1:5452:5432"
+
+  traccar:
+    ports: !override
+      - "127.0.0.1:8183:8082"   # web UI (SSH tunnel only); no Traccar Client port, phones report to the live one
+
+  api:
+    environment:
+      COOKIE_SECURE: "true"   # https://test.dispatchflow.site; "false" for a plain-http SSH tunnel to 8191
+    ports: !override
+      - "127.0.0.1:8201:8000"
+
+  web:
+    ports: !override
+      - "127.0.0.1:8191:80"

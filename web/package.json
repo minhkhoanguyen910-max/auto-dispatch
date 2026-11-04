@@ -1,0 +1,35 @@
+{
+  "name": "dispatch-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mantine/core": "9.7.0",
+    "@mantine/form": "9.7.0",
+    "@mantine/hooks": "9.7.0",
+    "@mantine/notifications": "9.7.0",
+    "@tabler/icons-react": "3.49.0",
+    "@tanstack/react-query": "5.104.1",
+    "qrcode": "1.5.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-router-dom": "7.18.4"
+  },
+  "devDependencies": {
+    "@types/google.maps": "3.66.8",
+    "@types/qrcode": "1.5.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "postcss": "8.5.29",
+    "postcss-preset-mantine": "1.18.0",
+    "postcss-simple-vars": "7.0.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.2"
+  }
+}

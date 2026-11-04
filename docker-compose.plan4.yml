@@ -1,0 +1,25 @@
+# Test copy of the app for Plan 4, next to the live one on the same server. Use it only with its own project name:
+#   docker compose -p plan4 -f docker-compose.yml -f docker-compose.plan4.yml up -d --build
+# Own volumes (plan4_*), other ports (localhost only; open the web app through an SSH tunnel to 8190), and its own
+# Telegram bot: plan4's .env is a separate file (not a link to the live one) with the test bot's token. Never put
+# the live bot's token there: Telegram allows one reader per bot, so the live bot would stop getting messages.
+services:
+  db:
+    ports: !override
+      - "127.0.0.1:5451:5432"
+
+  traccar:
+    ports: !override
+      - "127.0.0.1:8182:8082"   # web UI (SSH tunnel only); no Traccar Client port, phones report to the live one
+
+  api:
+    environment:
+      # Served over HTTPS at dispatch.dispatchflow.site during the test week (2026-10-30, live stopped); "false" for the
+      # plain-http SSH tunnel to 8190
+      COOKIE_SECURE: "true"
+    ports: !override
+      - "127.0.0.1:8200:8000"
+
+  web:
+    ports: !override
+      - "127.0.0.1:8190:80"
