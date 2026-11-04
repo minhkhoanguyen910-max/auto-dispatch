@@ -1,4 +1,4 @@
-# Telegram Dispatch System
+# Auto Dispatch
 
 Dispatchers enter orders on a web page; the backend offers each order to the nearest driver
 over Telegram. Drivers report GPS with the Traccar Client app and update statuses in the bot.

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from app.routers import app_settings, auth, customers, driver_messages, drivers, health, orders, products, routes, traccar, users
 
-app = FastAPI(title="Telegram Dispatch System")
+app = FastAPI(title="Auto Dispatch")
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(users.router)
